@@ -15,7 +15,7 @@ from tqdm import tqdm
 from . import secret
 from .browser import Browser
 from .exceptions import RetryException
-from .fetch import fetch_caption
+from .fetch import fetch_caption, fetch_hashtags
 from .fetch import fetch_comments
 from .fetch import fetch_datetime
 from .fetch import fetch_imgs
@@ -27,6 +27,16 @@ from .utils import randmized_sleep
 from .utils import retry
 
 
+def output(data, filepath):
+    out = json.dumps(data, indent=4, ensure_ascii=False)
+    if filepath:
+        with open(filepath, "w", encoding="utf8") as f:
+            f.write(out)
+    else:
+        pp = pprint.PrettyPrinter(indent=4)
+        pp.pprint(out)
+
+
 class Logging(object):
     PREFIX = "instagram-crawler"
 
@@ -34,7 +44,8 @@ class Logging(object):
         try:
             timestamp = int(time.time())
             self.cleanup(timestamp)
-            self.logger = open("/tmp/%s-%s.log" % (Logging.PREFIX, timestamp), "w")
+            self.logger = open("/tmp/%s-%s.log" %
+                               (Logging.PREFIX, timestamp), "w")
             self.log_disable = False
         except Exception:
             self.log_disable = True
@@ -116,7 +127,8 @@ class InsCrawler(Logging):
         url = "%s/%s/" % (InsCrawler.URL, username)
         browser.get(url)
         source = browser.driver.page_source
-        p = re.compile(r"window._sharedData = (?P<json>.*?);</script>", re.DOTALL)
+        p = re.compile(
+            r"window._sharedData = (?P<json>.*?);</script>", re.DOTALL)
         json_data = re.search(p, source).group("json")
         data = json.loads(json_data)
 
@@ -144,10 +156,10 @@ class InsCrawler(Logging):
         else:
             return self._get_posts(number)
 
-    def get_latest_posts_by_tag(self, tag, num):
+    def get_latest_posts_by_tag(self, tag, num, path):
         url = "%s/explore/tags/%s/" % (InsCrawler.URL, tag)
         self.browser.get(url)
-        return self._get_posts(num)
+        return self._get_posts(num, path)
 
     def auto_like(self, tag="", maximum=1000):
         self.login()
@@ -162,7 +174,8 @@ class InsCrawler(Logging):
         ele_post.click()
 
         for _ in range(maximum):
-            heart = browser.find_one(".dCJp8 .glyphsSpriteHeart__outline__24__grey_9")
+            heart = browser.find_one(
+                ".dCJp8 .glyphsSpriteHeart__outline__24__grey_9")
             if heart:
                 heart.click()
                 randmized_sleep(2)
@@ -236,7 +249,8 @@ class InsCrawler(Logging):
                 sys.stderr.write(
                     "\x1b[1;31m"
                     + "Failed to fetch the post: "
-                    + cur_key if isinstance(cur_key,str) else 'URL not fetched'
+                    + cur_key if isinstance(cur_key,
+                                            str) else 'URL not fetched'
                     + "\x1b[0m"
                     + "\n"
                 )
@@ -253,12 +267,12 @@ class InsCrawler(Logging):
             posts.sort(key=lambda post: post["datetime"], reverse=True)
         return posts
 
-    def _get_posts(self, num):
+    def _get_posts(self, num, path):
         """
             To get posts, we have to click on the load more
             button and make the browser call post api.
         """
-        TIMEOUT = 600
+        TIMEOUT = 1000
         browser = self.browser
         key_set = set()
         posts = []
@@ -267,22 +281,25 @@ class InsCrawler(Logging):
 
         pbar = tqdm(total=num)
 
-        def start_fetching(pre_post_num, wait_time):
+        def start_fetching(pre_post_num, wait_time, path):
             ele_posts = browser.find(".v1Nh3 a")
             for ele in ele_posts:
                 key = ele.get_attribute("href")
+
                 if key not in key_set:
-                    dict_post = { "key": key }
+                    dict_post = {"key": key}
                     ele_img = browser.find_one(".KL4Bh img", ele)
                     dict_post["caption"] = ele_img.get_attribute("alt")
                     dict_post["img_url"] = ele_img.get_attribute("src")
-
-                    fetch_details(browser, dict_post)
-
+                    # fetch_details(browser, dict_post)
                     key_set.add(key)
                     posts.append(dict_post)
 
+                    if len(posts) % 1000 == 0:
+                        output(posts, path)
+                        print(len(posts), "clear!")
                     if len(posts) == num:
+
                         break
 
             if pre_post_num == len(posts):
@@ -302,14 +319,18 @@ class InsCrawler(Logging):
 
         pbar.set_description("fetching")
         while len(posts) < num and wait_time < TIMEOUT:
-            post_num, wait_time = start_fetching(pre_post_num, wait_time)
+            post_num, wait_time = start_fetching(
+                pre_post_num, wait_time, path)
             pbar.update(post_num - pre_post_num)
             pre_post_num = post_num
 
             loading = browser.find_one(".W1Bne")
             if not loading and wait_time > TIMEOUT / 2:
+                print(loading)
+                print(wait_time)
                 break
 
         pbar.close()
+
         print("Done. Fetched %s posts." % (min(len(posts), num)))
         return posts[:num]

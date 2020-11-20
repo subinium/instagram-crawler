@@ -12,7 +12,6 @@ def get_parsed_mentions(raw_text):
 
 def get_parsed_hashtags(raw_text):
     regex = re.compile(r"#(\w+)")
-    regex.findall(raw_text)
     return regex.findall(raw_text)
 
 
@@ -24,10 +23,8 @@ def fetch_mentions(raw_test, dict_obj):
     if mentions:
         dict_obj["mentions"] = mentions
 
-def fetch_hashtags(raw_test, dict_obj):
-    if not settings.fetch_hashtags:
-        return
 
+def fetch_hashtags(raw_test, dict_obj):
     hashtags = get_parsed_hashtags(raw_test)
     if hashtags:
         dict_obj["hashtags"] = hashtags
@@ -60,6 +57,7 @@ def fetch_imgs(browser, dict_post):
 
     dict_post["img_urls"] = list(img_urls)
 
+
 def fetch_likes_plays(browser, dict_post):
     if not settings.fetch_likes_plays:
         return
@@ -70,7 +68,8 @@ def fetch_likes_plays(browser, dict_post):
 
     if el_see_likes is not None:
         el_plays = browser.find_one(".vcOH2 > span")
-        dict_post["views"] = int(el_plays.text.replace(",", "").replace(".", ""))
+        dict_post["views"] = int(
+            el_plays.text.replace(",", "").replace(".", ""))
         el_see_likes.click()
         el_likes = browser.find_one(".vJRqr > span")
         likes = el_likes.text
@@ -116,15 +115,15 @@ def fetch_caption(browser, dict_post):
 
     if len(ele_comments) > 0:
 
-        temp_element = browser.find("span",ele_comments[0])
+        temp_element = browser.find("span", ele_comments[0])
 
         for element in temp_element:
 
-            if element.text not in ['Verified',''] and 'caption' not in dict_post:
+            if element.text not in ['Verified', ''] and 'caption' not in dict_post:
                 dict_post["caption"] = element.text
 
-        fetch_mentions(dict_post.get("caption",""), dict_post)
-        fetch_hashtags(dict_post.get("caption",""), dict_post)
+        fetch_mentions(dict_post.get("caption", ""), dict_post)
+        fetch_hashtags(dict_post.get("caption", ""), dict_post)
 
 
 def fetch_comments(browser, dict_post):
@@ -154,7 +153,7 @@ def fetch_comments(browser, dict_post):
 
         for element in temp_element:
 
-            if element.text not in ['Verified','']:
+            if element.text not in ['Verified', '']:
                 comment = element.text
 
         comment_obj = {"author": author, "comment": comment}
@@ -178,19 +177,25 @@ def fetch_initial_comment(browser, dict_post):
 
 
 def fetch_details(browser, dict_post):
-    if not settings.fetch_details:
-        return
+    # if not settings.fetch_details:
+    #     return
 
     browser.open_new_tab(dict_post["key"])
 
     username = browser.find_one("a.ZIAjV")
     location = browser.find_one("a.O4GlU")
+    datetime = browser.find_one("time.Nzb55")
 
-    if username:
-        dict_post["username"] = username.text
+    # if username:
+    #     dict_post["username"] = username.text
     if location:
         dict_post["location"] = location.text
+    if datetime:
+        dict_post["datetime"] = datetime.get_attribute("datetime")
 
-    fetch_initial_comment(browser, dict_post)
-
+    first_comment = browser.find_one('ul.Mr508')
+    total = browser.find_one('div.C4VMK')
+    total = total.text if total else ''
+    first_comment = first_comment.text if first_comment else ''
+    fetch_hashtags(total + first_comment, dict_post)
     browser.close_current_tab()
