@@ -161,6 +161,10 @@ class InsCrawler(Logging):
         self.browser.get(url)
         return self._get_posts(num, path)
 
+    def get_posts_by_keys(self, key, save, path):
+
+        return self._get_posts_by_keys(key, save, path)
+
     def auto_like(self, tag="", maximum=1000):
         self.login()
         browser = self.browser
@@ -334,3 +338,63 @@ class InsCrawler(Logging):
 
         print("Done. Fetched %s posts." % (min(len(posts), num)))
         return posts[:num]
+
+    def _get_posts_by_keys(self, keys, save, path):
+        """
+            To get posts, we have to click on the load more
+            button and make the browser call post api.
+        """
+        TIMEOUT = 1000
+        browser = self.browser
+        posts = []
+        pre_post_num = 0
+        wait_time = 1
+        pbar = tqdm(total=len(keys))
+
+        def start_fetching(pre_post_num, wait_time, path):
+            # ele_posts = browser.find(".v1Nh3 a")
+            for key in keys:
+
+                dict_post = {"key": key}
+                fetch_details(browser, dict_post)
+                posts.append(dict_post)
+
+                if len(posts) % save == 0:
+                    output(posts, path)
+                    print(len(posts), "clear!")
+                if len(posts) == len(keys):
+
+                    break
+
+            if pre_post_num == len(posts):
+                pbar.set_description("Wait for %s sec" % (wait_time))
+                sleep(wait_time)
+                pbar.set_description("fetching")
+
+                wait_time *= 2
+                # browser.scroll_up(300)
+            else:
+                wait_time = 1
+
+            pre_post_num = len(posts)
+            # browser.scroll_down()
+
+            return pre_post_num, wait_time
+
+        pbar.set_description("fetching")
+        while len(posts) < len(keys) and wait_time < TIMEOUT:
+            post_num, wait_time = start_fetching(
+                pre_post_num, wait_time, path)
+            pbar.update(post_num - pre_post_num)
+            pre_post_num = post_num
+
+            loading = browser.find_one(".W1Bne")
+            if not loading and wait_time > TIMEOUT / 2:
+                print(loading)
+                print(wait_time)
+                break
+
+        pbar.close()
+
+        print("Done. Fetched %s posts." % (min(len(posts), len(keys))))
+        return posts[:len(keys)]
