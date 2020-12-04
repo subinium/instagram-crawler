@@ -59,28 +59,18 @@ def fetch_imgs(browser, dict_post):
 
 
 def fetch_likes_plays(browser, dict_post):
-    if not settings.fetch_likes_plays:
-        return
-
+    # if not settings.fetch_likes_plays:
+    #     return
+    browser.open_new_tab(dict_post["key"])
     likes = None
     el_likes = browser.find_one(".Nm9Fw > * > span")
-    el_see_likes = browser.find_one(".vcOH2")
 
-    if el_see_likes is not None:
-        el_plays = browser.find_one(".vcOH2 > span")
-        dict_post["views"] = int(
-            el_plays.text.replace(",", "").replace(".", ""))
-        el_see_likes.click()
-        el_likes = browser.find_one(".vJRqr > span")
-        likes = el_likes.text
-        browser.find_one(".QhbhU").click()
-
-    elif el_likes is not None:
+    if el_likes:
         likes = el_likes.text
 
-    dict_post["likes"] = (
-        int(likes.replace(",", "").replace(".", "")) if likes is not None else 0
-    )
+    dict_post["likes"] = int(likes.replace(",", "").replace(
+        ".", "")) if likes is not None else 0
+    browser.close_current_tab()
 
 
 def fetch_likers(browser, dict_post):

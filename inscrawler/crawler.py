@@ -356,7 +356,8 @@ class InsCrawler(Logging):
             for key in keys:
 
                 dict_post = {"key": key}
-                fetch_details(browser, dict_post)
+                fetch_likes_plays(browser, dict_post)
+                # fetch_details(browser, dict_post)
                 posts.append(dict_post)
 
                 if len(posts) % save == 0:

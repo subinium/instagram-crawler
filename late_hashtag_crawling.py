@@ -27,9 +27,8 @@ if __name__ == '__main__':
     wait_time = 1.5
     posts = []
     print(f'Start Crawling #{st} to #{ed}')
-    data = pd.read_csv('./jeju.csv')
-
+    data = pd.read_csv('./data_subset_info.csv')
     output(
         get_posts_by_keys(
-            data['key'][st:ed], save, f'./output_{st}_{ed}.json'), f'./output_{st}_{ed}.json'
+            data['key'][st:ed], save, f'./output_likes_{st}_{ed}.json'), f'./output_{st}_{ed}.json'
     )
